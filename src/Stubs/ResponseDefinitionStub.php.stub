@@ -1,0 +1,10 @@
+<?php
+
+namespace #NAMESPACE#;
+
+use FoodkitMonolith\ValueObjects\Definitions\ResponseDefinition;
+
+class #CLASS_NAME# extends ResponseDefinition
+{
+
+}

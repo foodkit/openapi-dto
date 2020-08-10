@@ -1,0 +1,13 @@
+<?php
+
+namespace #NAMESPACE#;
+
+use FoodkitTests\Specs\DefinitionTestCase;
+
+class #CLASS_NAME# extends DefinitionTestCase
+{
+    protected function actionName(): string
+    {
+        return '#ACTION_NAME#';
+    }
+}

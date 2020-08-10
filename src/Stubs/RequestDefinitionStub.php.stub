@@ -1,0 +1,10 @@
+<?php
+
+namespace #NAMESPACE#;
+
+use FoodkitMonolith\ValueObjects\Definitions\RequestDefinition;
+
+class #CLASS_NAME# extends RequestDefinition
+{
+
+}
