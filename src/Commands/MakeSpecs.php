@@ -89,7 +89,7 @@ class MakeSpecs extends Command
     public function resolveContextNamespace(Route $route): string
     {
         $path = $this->docsResolver->prepareUri($route->uri());
-        preg_match('/v\d\/([\w-\/_]+)/', $path, $matches);
+        preg_match('/v\d\/([-\w\/_]+)/', $path, $matches);
 
         return collect(explode('/', $matches[1]))->map(function (string $pathPart) {
             return Str::studly($pathPart);
@@ -112,7 +112,7 @@ class MakeSpecs extends Command
         $filePath = base_path("tests/Specs/Tests/v{$version}/{$contextPath}/{$baseName}Test.php");
 
         $this->makeStub(
-            app_path('Console/Commands/Documentation/Stubs/TestCaseStub.php.stub'),
+            __DIR__.'/../Stubs/TestCaseStub.php.stub',
             $filePath,
             ['#NAMESPACE#' => $namespace, '#CLASS_NAME#' => $class, '#ACTION_NAME#' => $action]
         );
@@ -127,7 +127,7 @@ class MakeSpecs extends Command
         $filePath = base_path("specs/v{$version}/Requests/{$contextPath}/{$baseName}RequestDefinition.php");
 
         $this->makeStub(
-            app_path('Console/Commands/Documentation/Stubs/RequestDefinitionStub.php.stub'),
+            __DIR__.'/../Stubs/RequestDefinitionStub.php.stub',
             $filePath,
             ['#NAMESPACE#' => $namespace, '#CLASS_NAME#' => $class]
         );
@@ -142,7 +142,7 @@ class MakeSpecs extends Command
         $filePath = base_path("specs/v{$version}/Responses/{$contextPath}/{$baseName}ResponseDefinition.php");
 
         $this->makeStub(
-            app_path('Console/Commands/Documentation/Stubs/ResponseDefinitionStub.php.stub'),
+            __DIR__.'/../Stubs/ResponseDefinitionStub.php.stub',
             $filePath,
             ['#NAMESPACE#' => $namespace, '#CLASS_NAME#' => $class]
         );

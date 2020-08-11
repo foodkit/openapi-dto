@@ -2,7 +2,7 @@
 
 namespace #NAMESPACE#;
 
-use FoodkitMonolith\ValueObjects\Definitions\ResponseDefinition;
+use Foodkit\OpenApiDto\Definitions\ResponseDefinition;
 
 class #CLASS_NAME# extends ResponseDefinition
 {
