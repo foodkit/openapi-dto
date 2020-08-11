@@ -2,18 +2,11 @@
 
 namespace Foodkit\OpenApiDto\Tests;
 
-abstract class TestCase extends \Orchestra\Testbench\TestCase
+abstract class TestCase extends \PHPUnit\Framework\TestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
 
-    }
-
-    protected function getPackageProviders($app)
-    {
-        return [
-            //
-        ];
     }
 }

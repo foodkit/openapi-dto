@@ -1,8 +1,8 @@
 <?php
 
-namespace Orion\Tests\Unit;
+namespace Foodkit\OpenApiDto\Tests\Unit;
 
-use Orion\Tests\TestCase as BaseTestCase;
+use Foodkit\OpenApiDto\Tests\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
