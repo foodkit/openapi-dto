@@ -160,26 +160,39 @@ class MergeSpecs extends BaseDocsCommand
 
         foreach ($docsFiles as $docsFile) {
             /** @var SplFileInfo $docsFile */
-            $docs = json_decode(File::get($docsFile->getRealPath()), true);
-
-            $pathOperationDescriptors = Arr::first($docs);
-
-            if (!is_array($pathOperationDescriptors)) {
+            if (in_array($docsFile->getFilename(), ['private.json', 'public.json'])) {
                 continue;
             }
 
-            $pathUri = Arr::first(array_keys($docs));
-            $pathApiVersion = $this->resolvePathUriVersion($pathUri);
+            $docs = json_decode(File::get($docsFile->getRealPath()), true);
 
-            if (!Arr::has($docsHeap, $pathApiVersion)) {
-                $docsHeap[$pathApiVersion] = [];
+            if (!is_array($docs)) {
+                continue;
             }
 
-            foreach ($pathOperationDescriptors as $operationMethod => &$operationDescriptor) {
-                $operationDescriptor['api_version'] = $pathApiVersion;
-            }
+            $pathUris = array_keys($docs);
 
-            $docsHeap[$pathApiVersion][$this->resolvePathUriWithoutVersion($pathUri)] = $pathOperationDescriptors;
+            foreach ($pathUris as $pathUri) {
+                $pathOperationDescriptors = Arr::get($docs, $pathUri);
+
+                if (!is_array($pathOperationDescriptors)) {
+                    continue;
+                }
+
+                $pathApiVersion = $this->resolvePathUriVersion($pathUri);
+
+                if (!Arr::has($docsHeap, $pathApiVersion)) {
+                    $docsHeap[$pathApiVersion] = [];
+                }
+
+                foreach ($pathOperationDescriptors as $operationMethod => &$operationDescriptor) {
+                    $operationDescriptor['api_version'] = $pathApiVersion;
+                }
+
+                $pathUriWithoutVersion = $this->resolvePathUriWithoutVersion($pathUri);
+                $docsHeap[$pathApiVersion][$pathUriWithoutVersion] = $pathOperationDescriptors;
+
+            }
         }
 
         return $docsHeap;
