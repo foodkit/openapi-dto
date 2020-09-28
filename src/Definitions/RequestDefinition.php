@@ -11,10 +11,6 @@ abstract class RequestDefinition
 {
     use MergesSchemas, ValidatesDefinitions;
 
-    public const MODIFIER_PUBLIC = 'modifier.public';
-    public const MODIFIER_PRIVATE = 'modifier.private';
-    public const MODIFIER_SKIP = 'modifier.skip';
-
     public function __construct()
     {
         $this->validateDefinitions($this->bodyParameters(), 'body');
@@ -67,11 +63,6 @@ abstract class RequestDefinition
     public function deprecated(): bool
     {
         return false;
-    }
-
-    public function modifier(): string
-    {
-        return self::MODIFIER_PUBLIC;
     }
 
     abstract public function tags(): array;
