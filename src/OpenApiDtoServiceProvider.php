@@ -15,7 +15,7 @@ class OpenApiDtoServiceProvider extends ServiceProvider
      */
     public function register()
     {
-
+        $this->app->singleton('foodkit.open-api', OpenApi::class);
     }
 
     /**

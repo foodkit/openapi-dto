@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Foodkit\OpenApiDto\Commands;
 
-use Foodkit\OpenApiDto\Resolvers\DocsResolver;
+use Foodkit\OpenApiDto\Resolvers\RoutesResolver;
 use Illuminate\Console\Command;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\File;
@@ -34,7 +34,7 @@ class MakeSpecs extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->docsResolver = new DocsResolver(collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes()));
+        $this->docsResolver = new RoutesResolver(collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes()));
     }
 
     /**

@@ -48,15 +48,17 @@ class PublishDocs extends BaseDocsCommand
     protected function publishDocs(int $version): void
     {
         $template = File::get(base_path('./docs/template.html'));
+        $mergedSpecFilePaths = File::glob(base_path("docs/v6/*.json"));
 
-        $publicDocs = $this->docsManager->loadDocs("v{$version}/public");
-        $privateDocs = $this->docsManager->loadDocs("v{$version}/private");
+        foreach ($mergedSpecFilePaths as $mergedSpecFilePath) {
+            $filename = basename($mergedSpecFilePath);
+            $name = explode('.', $filename)[0];
 
-        $renderedPublicDocs = $this->renderDocs($publicDocs, $template);
-        $renderedPrivateDocs = $this->renderDocs($privateDocs, $template);
+            $publicDocs = $this->docsManager->loadDocs("v{$version}/{$name}");
+            $renderedPublicDocs = $this->renderDocs($publicDocs, $template);
 
-        File::put(base_path("./docs/build/v{$version}-public.html"), $renderedPublicDocs);
-        File::put(base_path("./docs/build/v{$version}-private.html"), $renderedPrivateDocs);
+            File::put(base_path("./docs/build/v{$version}-{$name}.html"), $renderedPublicDocs);
+        }
 
         $this->info("Documentation for API version {$version} has been published.");
     }

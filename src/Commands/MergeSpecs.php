@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Foodkit\OpenApiDto\Commands;
 
-use Foodkit\OpenApiDto\Builders\DocsBuilder;
-use Foodkit\OpenApiDto\Definitions\RequestDefinition;
+use Foodkit\OpenApiDto\Builders\SpecsBuilder;
+use Foodkit\OpenApiDto\Facades\OpenApi;
 use Foodkit\OpenApiDto\Resolvers\SpecsResolver;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
+use RuntimeException;
 use SplFileInfo;
 
 class MergeSpecs extends BaseDocsCommand
@@ -25,13 +28,13 @@ class MergeSpecs extends BaseDocsCommand
      *
      * @var string
      */
-    protected $description = 'Merges generated specs into single files by modifier.';
+    protected $description = 'Merges generated specs into single files.';
 
-    /** @var DocsBuilder $docsBuilder */
-    protected $docsBuilder;
+    /** @var SpecsBuilder $specsBuilder */
+    protected $specsBuilder;
 
-    /** @var array $docsHeap */
-    protected $docsHeap;
+    /** @var array $specsHeap */
+    protected $specsHeap;
 
     /** @var string $baseUrl */
     protected $baseUrl;
@@ -42,14 +45,14 @@ class MergeSpecs extends BaseDocsCommand
     public function __construct()
     {
         parent::__construct();
-        $this->docsBuilder = new DocsBuilder($this->docsResolver, new SpecsResolver());
+        $this->specsBuilder = new SpecsBuilder($this->routesResolver, new SpecsResolver());
     }
 
     /**
      * Execute the console command.
      *
      * @return mixed
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     * @throws FileNotFoundException
      */
     public function handle()
     {
@@ -65,15 +68,15 @@ class MergeSpecs extends BaseDocsCommand
             return;
         }
 
-        $this->docsHeap = $this->buildDocsHeap();
+        $this->specsHeap = $this->buildSpecsHeap();
 
         if ($version === '*') {
             //Only integer versioning is currently supported. If point releases are introduced (e.g. v5, v5.3) use a map of versions
             for ($version = 1; $version < $this->latestApiVersion + 1; $version++) {
-                $this->mergeDocs($version);
+                $this->mergeSpecs($version);
             }
         } else {
-            $this->mergeDocs((int) $version);
+            $this->mergeSpecs((int) $version);
         }
     }
 
@@ -82,116 +85,67 @@ class MergeSpecs extends BaseDocsCommand
      *
      * @param int $version
      */
-    protected function mergeDocs(int $version): void
+    protected function mergeSpecs(int $version): void
     {
-        $mergedDocs = $this->getModifiersBase();
+        $mergeCallback = OpenApi::getMergeCallback();
 
-        foreach ($this->docsHeap as $apiVersion => $paths) {
-            if ($apiVersion > $version) {
-                break;
-            }
-
-            foreach ($paths as $pathUri => $pathDescriptor) {
-                foreach ($pathDescriptor as $operationMethod => $operationDescriptor) {
-
-                    $modifier = $this->resolveOperationModifier($operationDescriptor);
-
-                    if (!$modifier) {
-                        continue;
-                    }
-
-                    $operationDescriptor = $this->prepareOperationDescriptor($operationDescriptor, $modifier);
-
-                    if (!Arr::has($mergedDocs[$modifier], $pathUri)) {
-                        $mergedDocs[$modifier][$pathUri] = [];
-                    }
-                    $mergedDocs[$modifier][$pathUri] = array_merge($mergedDocs[$modifier][$pathUri], [$operationMethod => $operationDescriptor]);
-                }
-            }
+        if (!$mergeCallback) {
+            throw new RuntimeException('Please use OpenApi::setMergeCallback to set the callback for merging Open API specs.');
         }
-        $mergedDocs = $this->prefixMergedDocs($mergedDocs);
-        $this->saveDocs($mergedDocs, $version);
+
+        $specs = $mergeCallback($this->specsHeap, $version);
+
+        $this->saveSpecs($specs, $version);
 
         $this->info("Specs for API version {$version} has been merged.");
-    }
-
-    /**
-     * Adds api/v<version> prefix to the path specs.
-     *
-     * @param array $mergedDocs
-     * @return array
-     */
-    protected function prefixMergedDocs(array $mergedDocs): array
-    {
-        $docs = [];
-
-        foreach ($mergedDocs as $modifier => $paths) {
-            if (!Arr::has($docs, $modifier)) {
-                $docs[$modifier] = [];
-            }
-
-            foreach ($paths as $pathUri => $operationDescriptors) {
-                foreach ($operationDescriptors as $operationMethod => $operationDescriptor) {
-                    $routeUri = "/v{$operationDescriptor['api_version']}/{$pathUri}";
-                    unset($operationDescriptor['api_version']);
-
-                    if (!Arr::has($docs[$modifier], $routeUri)) {
-                        $docs[$modifier][$routeUri] = [];
-                    }
-
-                    $docs[$modifier][$routeUri] = array_merge($docs[$modifier][$routeUri], [$operationMethod => $operationDescriptor]);
-                }
-            }
-        }
-
-        return $docs;
     }
 
     /**
      * Generates a list of all api specs grouped by api version.
      *
      * @return array
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     * @throws FileNotFoundException
      */
-    protected function buildDocsHeap(): array
+    protected function buildSpecsHeap(): array
     {
-        $docsFiles = File::allFiles(base_path("docs"));
         $docsHeap = [];
 
-        foreach ($docsFiles as $docsFile) {
-            /** @var SplFileInfo $docsFile */
-            if (in_array($docsFile->getFilename(), ['private.json', 'public.json'])) {
-                continue;
-            }
+        for ($version = 1; $version < $this->latestApiVersion; $version++){
+            $docsFiles = File::allFiles(base_path("docs/v$version"));
 
-            $docs = json_decode(File::get($docsFile->getRealPath()), true);
-
-            if (!is_array($docs)) {
-                continue;
-            }
-
-            $pathUris = array_keys($docs);
-
-            foreach ($pathUris as $pathUri) {
-                $pathOperationDescriptors = Arr::get($docs, $pathUri);
-
-                if (!is_array($pathOperationDescriptors)) {
+            foreach ($docsFiles as $docsFile) {
+                /** @var SplFileInfo $docsFile */
+                if (strpos($docsFile->getFilename(), 'public') || strpos($docsFile->getFilename(), 'private')) {
                     continue;
                 }
 
-                $pathApiVersion = $this->resolvePathUriVersion($pathUri);
+                $docs = json_decode(File::get($docsFile->getRealPath()), true);
 
-                if (!Arr::has($docsHeap, $pathApiVersion)) {
-                    $docsHeap[$pathApiVersion] = [];
+                if (!is_array($docs)) {
+                    continue;
                 }
 
-                foreach ($pathOperationDescriptors as $operationMethod => &$operationDescriptor) {
-                    $operationDescriptor['api_version'] = $pathApiVersion;
+                $pathUris = array_keys($docs);
+
+                foreach ($pathUris as $pathUri) {
+                    $pathOperationDescriptors = Arr::get($docs, $pathUri);
+
+                    if (!is_array($pathOperationDescriptors)) {
+                        continue;
+                    }
+
+                    if (!Arr::has($docsHeap, $version)) {
+                        $docsHeap[$version] = [];
+                    }
+
+                    foreach ($pathOperationDescriptors as $operationMethod => &$operationDescriptor) {
+                        $operationDescriptor['api_version'] = $version;
+                    }
+
+                    $pathUriWithoutVersion = $this->resolvePathUriWithoutVersion($pathUri);
+                    $docsHeap[$version][$pathUriWithoutVersion] = $pathOperationDescriptors;
+
                 }
-
-                $pathUriWithoutVersion = $this->resolvePathUriWithoutVersion($pathUri);
-                $docsHeap[$pathApiVersion][$pathUriWithoutVersion] = $pathOperationDescriptors;
-
             }
         }
 
@@ -232,73 +186,22 @@ class MergeSpecs extends BaseDocsCommand
     }
 
     /**
-     * Removes modifier from the given operation descriptor.
-     *
-     * @param array $operationDescriptor
-     * @param string $modifier
-     * @return array
-     */
-    protected function prepareOperationDescriptor(array $operationDescriptor, string $modifier): array
-    {
-        unset($operationDescriptor['tags'][array_search($modifier, $operationDescriptor['tags'], true)]);
-        return $operationDescriptor;
-    }
-
-    /**
-     * Builds a complete OpenAPI specs descriptor.
-     *
-     * @param array $pathDocs
-     * @param int $version
-     * @return array
-     */
-    protected function prepareDocs(array $pathDocs, int $version): array
-    {
-        $docs = $this->docsBuilder->buildDocsRoot($version, $this->baseUrl);
-        $docs['paths'] = $pathDocs;
-
-        return $docs;
-    }
-
-    /**
      * Saves public and private docs for the given version.
      *
-     * @param array $mergedDocs
+     * @param array $mergedSpecs
      * @param int $version
+     * @throws BindingResolutionException
      */
-    protected function saveDocs(array $mergedDocs, int $version): void
+    protected function saveSpecs(array $mergedSpecs, int $version): void
     {
-        $this->docsManager->saveDocs(
-            $this->prepareDocs($mergedDocs[RequestDefinition::MODIFIER_PUBLIC], $version), "v{$version}/public"
-        );
-        $this->docsManager->saveDocs(
-            $this->prepareDocs($mergedDocs[RequestDefinition::MODIFIER_PRIVATE], $version), "v{$version}/private"
-        );
-    }
+        $saveCallback = OpenApi::getMergedSpecsSaveCallback();
 
-    /**
-     * Retrieves modifier from the list of operation tags.
-     *
-     * @param array $operationDescriptor
-     * @return string|null
-     */
-    protected function resolveOperationModifier(array $operationDescriptor): ?string
-    {
-        foreach ($operationDescriptor['tags'] as $tag) {
-            if (strpos($tag, 'modifier') !== false) {
-                return $tag;
-            }
+        if (!$saveCallback) {
+            throw new RuntimeException('Please use OpenApi::setMergedSpecsSaveCallback to set the callback for merging Open API specs.');
         }
 
-        return null;
-    }
+        $specsRoot = $this->specsBuilder->buildDocsRoot($version, $this->baseUrl);
 
-
-    protected function getModifiersBase(): array
-    {
-        return [
-            RequestDefinition::MODIFIER_PUBLIC => [],
-            RequestDefinition::MODIFIER_PRIVATE => [],
-            RequestDefinition::MODIFIER_SKIP => [],
-        ];
+        $saveCallback($mergedSpecs, $specsRoot, $version, $this->docsManager);
     }
 }
