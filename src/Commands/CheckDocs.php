@@ -81,8 +81,8 @@ class CheckDocs extends BaseDocsCommand
      */
     public function checkDocs(int $version): bool
     {
-        $versionedRoutes = $this->docsResolver->resolveRoutesForVersion($version);
-        $groupedRoutes = $this->docsResolver->groupRoutes($versionedRoutes);
+        $versionedRoutes = $this->routesResolver->resolveRoutesForVersion($version);
+        $groupedRoutes = $this->routesResolver->groupRoutes($versionedRoutes);
 
         $coverage = [
             'documented' => 0,
@@ -124,7 +124,7 @@ class CheckDocs extends BaseDocsCommand
         foreach ($routes as $route) {
             /** @var Route $route */
             if (!$this->routeIsAnnotated($route)) {
-                $this->warn("[".$this->docsResolver->resolveDocsPathMethod($route)."] ".$this->docsResolver->resolveDocsPathUri($route).' route is not annotated');
+                $this->warn("[".$this->routesResolver->resolveDocsPathMethod($route)."] ".$this->routesResolver->resolveDocsPathUri($route).' route is not annotated');
                 continue;
             }
 
@@ -183,8 +183,8 @@ class CheckDocs extends BaseDocsCommand
      */
     protected function routeIsDocumented(Route $route, array $docs): bool
     {
-        $routePathDescriptor = Arr::get($docs['paths'], $this->docsResolver->resolveDocsPathUri($route));
+        $routePathDescriptor = Arr::get($docs['paths'], $this->routesResolver->resolveDocsPathUri($route));
 
-        return $routePathDescriptor && Arr::has($routePathDescriptor, $this->docsResolver->resolveDocsPathMethod($route));
+        return $routePathDescriptor && Arr::has($routePathDescriptor, $this->routesResolver->resolveDocsPathMethod($route));
     }
 }

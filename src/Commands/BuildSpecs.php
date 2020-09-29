@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Foodkit\OpenApiDto\Commands;
 
-use Foodkit\OpenApiDto\Builders\DocsBuilder;
+use Foodkit\OpenApiDto\Builders\SpecsBuilder;
 use Foodkit\OpenApiDto\Resolvers\SpecsResolver;
 
 class BuildSpecs extends BaseDocsCommand
@@ -23,7 +23,7 @@ class BuildSpecs extends BaseDocsCommand
      */
     protected $description = 'Builds Open API compatible specs from app\'s route definitions';
 
-    /** @var DocsBuilder $docsBuilder */
+    /** @var SpecsBuilder $docsBuilder */
     protected $docsBuilder;
 
     /**
@@ -32,7 +32,7 @@ class BuildSpecs extends BaseDocsCommand
     public function __construct()
     {
         parent::__construct();
-        $this->docsBuilder = new DocsBuilder($this->docsResolver, new SpecsResolver());
+        $this->docsBuilder = new SpecsBuilder($this->routesResolver, new SpecsResolver());
     }
 
     /**
@@ -68,11 +68,11 @@ class BuildSpecs extends BaseDocsCommand
      */
     protected function buildDocs(int $version): void
     {
-        $versionedRoutes = $this->docsResolver->resolveRoutesForVersion($version);
-        $groupedRoutes = $this->docsResolver->groupRoutes($versionedRoutes);
+        $versionedRoutes = $this->routesResolver->resolveRoutesForVersion($version);
+        $groupedRoutes = $this->routesResolver->groupRoutes($versionedRoutes);
 
         foreach ($groupedRoutes as $uri => $routes) {
-            $docs = $this->docsBuilder->buildDocs($routes);
+            $docs = $this->docsBuilder->buildSpecs($routes);
 
             if (!count($docs)) {
                 continue;

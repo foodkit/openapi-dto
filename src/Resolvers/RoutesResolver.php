@@ -7,7 +7,7 @@ namespace Foodkit\OpenApiDto\Resolvers;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
 
-class DocsResolver
+class RoutesResolver
 {
     /** @var Collection|Route[] $routes */
     protected $routes;

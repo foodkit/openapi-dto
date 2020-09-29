@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Foodkit\OpenApiDto\Commands;
 
 use Foodkit\OpenApiDto\Managers\DocsManager;
-use Foodkit\OpenApiDto\Resolvers\DocsResolver;
+use Foodkit\OpenApiDto\Resolvers\RoutesResolver;
 use Illuminate\Console\Command;
 use Illuminate\Routing\Route;
 
@@ -17,8 +17,8 @@ abstract class BaseDocsCommand extends Command
     /** @var \Illuminate\Support\Collection|Route[] $routes */
     protected $routes;
 
-    /** @var DocsResolver $docsResolver */
-    protected $docsResolver;
+    /** @var RoutesResolver $routesResolver */
+    protected $routesResolver;
 
     /** @var DocsManager $docsManager */
     protected $docsManager;
@@ -28,7 +28,7 @@ abstract class BaseDocsCommand extends Command
         parent::__construct();
 
         $this->routes = collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes());
-        $this->docsResolver = new DocsResolver($this->routes);
+        $this->routesResolver = new RoutesResolver($this->routes);
         $this->docsManager = new DocsManager();
     }
 

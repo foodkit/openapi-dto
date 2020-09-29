@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Foodkit\OpenApiDto\Builders;
 
+use Carbon\Carbon;
 use Exception;
 use Foodkit\OpenApiDto\Builders\TypeBuilders\CollectionTypeBuilder;
 use Foodkit\OpenApiDto\Builders\TypeBuilders\DatetimeTypeBuilder;
@@ -15,19 +16,19 @@ use Foodkit\OpenApiDto\Builders\TypeBuilders\TypeBuilder;
 use Foodkit\OpenApiDto\Definition;
 use Foodkit\OpenApiDto\Definitions\RequestDefinition;
 use Foodkit\OpenApiDto\Definitions\ResponseDefinition;
-use Foodkit\OpenApiDto\Resolvers\DocsResolver;
+use Foodkit\OpenApiDto\Facades\OpenApi;
+use Foodkit\OpenApiDto\Resolvers\RoutesResolver;
 use Foodkit\OpenApiDto\Resolvers\SpecsResolver;
-use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use RuntimeException;
 
-class DocsBuilder
+class SpecsBuilder
 {
     /**
-     * @var DocsResolver $docsResolver
+     * @var RoutesResolver $docsResolver
      */
     protected $docsResolver;
 
@@ -39,10 +40,10 @@ class DocsBuilder
     /**
      * DocsBuilder constructor.
      *
-     * @param DocsResolver $docsResolver
+     * @param RoutesResolver $docsResolver
      * @param SpecsResolver $specsResolver
      */
-    public function __construct(DocsResolver $docsResolver, SpecsResolver $specsResolver)
+    public function __construct(RoutesResolver $docsResolver, SpecsResolver $specsResolver)
     {
         $this->docsResolver = $docsResolver;
         $this->specsResolver = $specsResolver;
@@ -54,7 +55,6 @@ class DocsBuilder
      * @param int $version
      * @param string $baseUrl
      * @return array
-     * @throws BindingResolutionException
      */
     public function buildDocsRoot(int $version, string $baseUrl): array
     {
@@ -69,7 +69,7 @@ class DocsBuilder
                     'url' => $baseUrl
                 ]
             ],
-            'tags' => app()->make('openapi-dto-tags') ?? []
+            'tags' => OpenApi::getTags()
         ];
     }
 
@@ -80,7 +80,7 @@ class DocsBuilder
      * @return array
      * @throws Exception
      */
-    public function buildDocs(Collection $routes): array
+    public function buildSpecs(Collection $routes): array
     {
         $paths = [];
 
@@ -102,7 +102,7 @@ class DocsBuilder
             }
 
             $routePathMethod = $this->docsResolver->resolveDocsPathMethod($route);
-            $paths[$routePathUri][$routePathMethod] = $this->buildDocsPath($requestSpecs, $responseSpecs, $routePathMethod);
+            $paths[$routePathUri][$routePathMethod] = $this->buildSpecsPath($requestSpecs, $responseSpecs, $routePathMethod);
         }
 
         return $paths;
@@ -116,18 +116,18 @@ class DocsBuilder
      * @param string $routePathMethod
      * @return array
      */
-    public function buildDocsPath(RequestDefinition $requestSpec, ResponseDefinition $responseSpec, string $routePathMethod): array
+    public function buildSpecsPath(RequestDefinition $requestSpec, ResponseDefinition $responseSpec, string $routePathMethod): array
     {
         $pathDescriptor = [
             'summary' => $requestSpec->summary(),
             'description' => $requestSpec->description(),
-            'parameters' => $this->buildDocsPathParameters($requestSpec),
-            'responses' => $this->buildDocsPathResponses($responseSpec),
-            'tags' => $this->buildDocsPathTags($requestSpec)
+            'parameters' => $this->buildSpecsPathParameters($requestSpec),
+            'responses' => $this->buildSpecsPathResponses($responseSpec),
+            'tags' => $this->buildSpecsPathTags($requestSpec)
         ];
 
         if ($routePathMethod !== 'get') {
-            $pathDescriptor['requestBody'] = $this->buildDocsPathRequestBody($requestSpec);
+            $pathDescriptor['requestBody'] = $this->buildSpecsPathRequestBody($requestSpec);
         }
 
         if ($requestSpec->deprecated()) {
@@ -145,9 +145,9 @@ class DocsBuilder
      * @param ResponseDefinition $responseSpec
      * @return array
      */
-    public function buildDocsPathResponses(ResponseDefinition $responseSpec): array
+    public function buildSpecsPathResponses(ResponseDefinition $responseSpec): array
     {
-        $headers = $this->buildDocsPathResponseHeaders($responseSpec);
+        $headers = $this->buildSpecsPathResponseHeaders($responseSpec);
 
         $descriptor = [
             'description' => $responseSpec->description(),
@@ -188,9 +188,9 @@ class DocsBuilder
      * @param RequestDefinition $requestSpec
      * @return array
      */
-    public function buildDocsPathTags(RequestDefinition $requestSpec): array
+    public function buildSpecsPathTags(RequestDefinition $requestSpec): array
     {
-        return array_merge($requestSpec->tags(), [$requestSpec->modifier()]);
+        return $requestSpec->tags();
     }
 
     /**
@@ -199,7 +199,7 @@ class DocsBuilder
      * @param ResponseDefinition $responseSpec
      * @return array
      */
-    protected function buildDocsPathResponseHeaders(ResponseDefinition $responseSpec): array
+    protected function buildSpecsPathResponseHeaders(ResponseDefinition $responseSpec): array
     {
         return collect($responseSpec->headers())->mapWithKeys(function (Definition $parameterDefinition, string $parameterName) {
             return [
@@ -217,7 +217,7 @@ class DocsBuilder
      * @param RequestDefinition $requestSpec
      * @return array
      */
-    public function buildDocsPathRequestBody(RequestDefinition $requestSpec): array
+    public function buildSpecsPathRequestBody(RequestDefinition $requestSpec): array
     {
         $properties = $this->buildSchemaProperties($requestSpec->bodyParameters());
 
@@ -240,19 +240,19 @@ class DocsBuilder
      * @param RequestDefinition $requestSpec
      * @return Collection
      */
-    public function buildDocsPathParameters(RequestDefinition $requestSpec): Collection
+    public function buildSpecsPathParameters(RequestDefinition $requestSpec): Collection
     {
         $pathParameters = collect($requestSpec->pathParameters())->map(function (Definition $parameterDefinition, string $parameterName) {
-            return $this->buildDocsPathParameter($parameterName, $parameterDefinition, 'path');
+            return $this->buildSpecsPathParameter($parameterName, $parameterDefinition, 'path');
         });
         $queryParameters = collect($requestSpec->queryParameters())->map(function (Definition $parameterDefinition, string $parameterName) {
-            return $this->buildDocsPathParameter($parameterName, $parameterDefinition, 'query');
+            return $this->buildSpecsPathParameter($parameterName, $parameterDefinition, 'query');
         });
         $headerParameters = collect($requestSpec->headers())->map(function (Definition $parameterDefinition, string $parameterName) {
-            return $this->buildDocsPathParameter($parameterName, $parameterDefinition, 'header');
+            return $this->buildSpecsPathParameter($parameterName, $parameterDefinition, 'header');
         });
         $cookieParameters = collect($requestSpec->cookies())->map(function (Definition $parameterDefinition, string $parameterName) {
-            return $this->buildDocsPathParameter($parameterName, $parameterDefinition, 'cookie');
+            return $this->buildSpecsPathParameter($parameterName, $parameterDefinition, 'cookie');
         });
 
         return $pathParameters->merge($queryParameters)->merge($headerParameters)->merge($cookieParameters)->values();
@@ -266,7 +266,7 @@ class DocsBuilder
      * @param string $in
      * @return array
      */
-    public function buildDocsPathParameter(string $parameterName, Definition $parameterDefinition, string $in): array
+    public function buildSpecsPathParameter(string $parameterName, Definition $parameterDefinition, string $in): array
     {
         $parameterDescriptor = [
             'in' => $in,
