@@ -108,34 +108,34 @@ class MergeSpecs extends BaseDocsCommand
      */
     protected function buildSpecsHeap(): array
     {
-        $docsHeap = [];
+        $specsHeap = [];
 
-        for ($version = 1; $version < $this->latestApiVersion; $version++){
-            $docsFiles = File::allFiles(base_path("docs/v$version"));
+        for ($version = 1; $version <= $this->latestApiVersion; $version++){
+            $specsFiles = File::allFiles(base_path("docs/v$version"));
 
-            foreach ($docsFiles as $docsFile) {
-                /** @var SplFileInfo $docsFile */
-                if (strpos($docsFile->getFilename(), 'public') || strpos($docsFile->getFilename(), 'private')) {
+            foreach ($specsFiles as $specsFile) {
+                /** @var SplFileInfo $specsFile */
+                if (strpos($specsFile->getFilename(), 'public') || strpos($specsFile->getFilename(), 'private')) {
                     continue;
                 }
 
-                $docs = json_decode(File::get($docsFile->getRealPath()), true);
+                $specs = json_decode(File::get($specsFile->getRealPath()), true);
 
-                if (!is_array($docs)) {
+                if (!is_array($specs)) {
                     continue;
                 }
 
-                $pathUris = array_keys($docs);
+                $pathUris = array_keys($specs);
 
                 foreach ($pathUris as $pathUri) {
-                    $pathOperationDescriptors = Arr::get($docs, $pathUri);
+                    $pathOperationDescriptors = Arr::get($specs, $pathUri);
 
                     if (!is_array($pathOperationDescriptors)) {
                         continue;
                     }
 
-                    if (!Arr::has($docsHeap, $version)) {
-                        $docsHeap[$version] = [];
+                    if (!Arr::has($specsHeap, $version)) {
+                        $specsHeap[$version] = [];
                     }
 
                     foreach ($pathOperationDescriptors as $operationMethod => &$operationDescriptor) {
@@ -143,13 +143,13 @@ class MergeSpecs extends BaseDocsCommand
                     }
 
                     $pathUriWithoutVersion = $this->resolvePathUriWithoutVersion($pathUri);
-                    $docsHeap[$version][$pathUriWithoutVersion] = $pathOperationDescriptors;
+                    $specsHeap[$version][$pathUriWithoutVersion] = $pathOperationDescriptors;
 
                 }
             }
         }
 
-        return $docsHeap;
+        return $specsHeap;
     }
 
     /**
