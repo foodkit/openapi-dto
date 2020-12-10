@@ -425,6 +425,10 @@ class SpecsBuilder
                 $propertyDescriptor = $this->buildArraySchemaProperties($propertyDescriptor, $propertyDefinition);
             }
 
+            if ($propertyDefinition->getType() instanceof EnumTypeBuilder) {
+                $propertyDescriptor['enum'] = $propertyDefinition->getType()->getValues();
+            }
+
             return [$propertyName => $propertyDescriptor];
         })->toArray();
     }
