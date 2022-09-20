@@ -41,6 +41,12 @@ class SpecsResolver
             return null;
         }
 
+        if (count($actionDescriptor) === 1) {
+            // If there is only one element in the $actionDescriptor array,
+            // we can assume that this is an invokable route action...
+            $actionDescriptor[1] = '__invoke';
+        }
+
         [$controller, $method] = $actionDescriptor;
 
         if (!class_exists($controller)) {
