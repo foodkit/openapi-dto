@@ -2,11 +2,9 @@
 
 namespace Foodkit\OpenApiDto\Tests;
 
-abstract class TestCase extends \PHPUnit\Framework\TestCase
-{
-    protected function setUp(): void
-    {
-        parent::setUp();
+use Orchestra\Testbench\TestCase as OrchestraTestCase;
 
-    }
+abstract class TestCase extends OrchestraTestCase
+{
+    protected $loadEnvironmentVariables = true;
 }
