@@ -17,8 +17,15 @@ class DocsManager
      * @param array $docs
      * @param string $uri
      */
-    public function saveDocs(array $docs, string $uri): void
+    public function saveDocs(array $docs, string $uri, bool $standalone = false): void
     {
+        if ($standalone) {
+            $docs = [
+                'openapi' => '3.0.0',
+                'paths' => $docs,
+            ];
+        }
+
         $encodedDocs = json_encode($docs, JSON_PRETTY_PRINT);
 
         $uriParts = explode('/', $uri);

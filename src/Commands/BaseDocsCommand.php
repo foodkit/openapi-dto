@@ -12,7 +12,7 @@ use Illuminate\Routing\Route;
 abstract class BaseDocsCommand extends Command
 {
     /** @var int $latestApiVersion */
-    protected $latestApiVersion = 6;
+    protected $latestApiVersion = 7;
 
     /** @var \Illuminate\Support\Collection|Route[] $routes */
     protected $routes;

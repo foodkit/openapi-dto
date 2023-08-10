@@ -14,7 +14,7 @@ class BuildSpecs extends BaseDocsCommand
      *
      * @var string
      */
-    protected $signature = 'foodkit:build-specs';
+    protected $signature = 'foodkit:build-specs {--v=} {--standalone}';
 
     /**
      * The console command description.
@@ -42,7 +42,9 @@ class BuildSpecs extends BaseDocsCommand
      */
     public function handle()
     {
-        $version = $this->ask('For which API version would you like to generate the specs?', '*');
+        $version = $this->option('v')
+            ?: $this->ask('For which API version would you like to generate the specs?', '*');
+
         if (!$this->isValidApiVersion($version)) {
             $this->error("The version you provided is not valid. It can either be any version (\"*\") or a specific version (the latest one is {$this->latestApiVersion}.0).");
             return;
@@ -78,7 +80,7 @@ class BuildSpecs extends BaseDocsCommand
                 continue;
             }
 
-            $this->docsManager->saveDocs($docs, $uri);
+            $this->docsManager->saveDocs($docs, $uri, !! $this->option('standalone'));
         }
 
         $this->info("OpenAPI specifications for API version {$version} have been generated.");
