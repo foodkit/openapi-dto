@@ -22,6 +22,10 @@ class DocsManager
         if ($standalone) {
             $docs = [
                 'openapi' => '3.0.0',
+                'info' => [
+                    'title' => 'Foodkit API',
+                    'version' => '1.0.0',
+                ],
                 'paths' => $docs,
             ];
         }
